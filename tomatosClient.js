@@ -8,18 +8,24 @@ let streamedObjects = 0;
 let spawnObject = (model, coords) => {
     return new Promise((resolve, reject) => {
         model = (typeof model === 'number' && model) || GetHashKey(model);
+        
+        /*
+        // Sometimes on player connection this is too slow
         let z = GetGroundZFor_3dCoord(coords.x, coords.y, coords.z, 0);
         if (z[0] == 1) {
             coords.z = z[1];
         }
+         */
+
+
         let tick = setTick(() => {
             if (HasModelLoaded(model)) {
-                console.log("Creating object");
                 let obj = CreateObject(model, coords.x, coords.y, coords.z, false, false, false);
                 SetModelAsNoLongerNeeded(model);
                 // SetEntityAsNoLongerNeeded(model);
                 FreezeEntityPosition(obj, true);
                 clearTick(tick);
+                console.log("Creating object", obj);
                 resolve(obj);
             } else {
                 console.log("Requesting model");
@@ -98,6 +104,10 @@ setTick(async () => {
         for (let id in spawnedObjects) {
             let object = spawnedObjects[id];
             let distance = object.distance;
+
+            if (distance === undefined) {
+                continue;
+            }
             
             if (object.deletionRequested) {
                 if (object.handle !== undefined) {
