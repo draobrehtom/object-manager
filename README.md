@@ -13,22 +13,18 @@ Due to the limitation to create new objects in game  (less 2000), I've created t
 - deleteObject(id)
 - getObjects() // returns objects as `object`
 
-## JS Usage
-
+## Usage
 1. Place this object manager into `resources` folder.
 2. Set a `dependencies { 'object-manager' } ` inside **your** script.
-3. Use `exports['object-manager']` and listed methods above
+3. Use `exports['object-manager']` and listed methods above inside **your** script
 
+## Usage example
+https://github.com/draobrehtom/object-manager-test
 
 ## Config
-
-You can modify those values:
+You can modify only those values:
 `
 // tomatosClient.js
 const streamedDistance = 50;
 const maxStreamedObjects = 50;
 `
-
-## Usage example
-
-https://github.com/draobrehtom/object-manager-test
