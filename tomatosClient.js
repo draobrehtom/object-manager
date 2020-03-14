@@ -124,6 +124,10 @@ setTick(async () => {
     }
 });
 
+onNet("object-manager:createObjects", (objects) => {
+    spawnedObjects = objects;
+});
+
 onNet("object-manager:createObject", (id, obj) => {
     if (! spawnedObjects[id]) {
         spawnedObjects[id] = obj;

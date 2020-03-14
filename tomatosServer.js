@@ -5,11 +5,16 @@ let generateObjectId = () => {
     return Math.round(Math.random() * 100) + 't' + Date.now() + 'r' + Math.round(Math.random() * 100);
 };
 
+let createObjects = (player, objects) => {
+    emitNet("object-manager:createObjects", player, objects);
+    console.log("create", objects, player)
+};
+
 onNet("object-manager:playerConnected", () => {
     players[source] = {};
-
-    updateObjects(source, objects);
+    createObjects(source, objects);
 });
+
 on("playerDropped", (reason) => {
     delete players[source];
 });
