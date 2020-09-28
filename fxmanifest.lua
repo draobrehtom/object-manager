@@ -1,6 +1,10 @@
--- compatibility wrapper
 fx_version 'adamant'
 game 'gta5'
 
-client_script "tomatosClient.js"
-server_script "tomatosServer.js"
+client_scripts {
+    "client/pointing.js",
+    "client/main.js",
+}
+server_script "server/main.js"
+
+dependencies {'instructional-buttons'}

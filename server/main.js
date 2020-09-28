@@ -20,7 +20,7 @@ on("playerDropped", (reason) => {
 });
 
 
-let createObject = (model, x, y, z) => {
+let createObject = (model, x, y, z, heading = 0, rotation = undefined) => {
     let id = generateObjectId();
     objects[id] = {
         model,
@@ -28,7 +28,9 @@ let createObject = (model, x, y, z) => {
             x,
             y,
             z
-        }
+        },
+        heading: heading,
+        rotation: rotation,
     };
 
     for (let player in players) {
@@ -49,4 +51,12 @@ exports("deleteObject", deleteObject);
 
 exports("getObjects", () => {
     return objects;
+});
+
+onNet("object-manager:objectCreated", (model, coords, heading = 0, rotation = undefined) => {
+    createObject(model, coords.x, coords.y, coords.z, heading, rotation);
+});
+
+onNet("object-manager:deleteObject", (id) => {
+    deleteObject(id);
 });
