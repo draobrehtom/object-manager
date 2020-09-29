@@ -6,7 +6,8 @@ dependencies {
 }
 
 client_scripts {
-    'client/pointing.js',
     'client/main.js',
+    'client/streaming.js',
+    'client/pointing.js',
 }
 server_script 'server/main.js'

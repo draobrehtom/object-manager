@@ -225,26 +225,28 @@ let init = () => {
             }
         } else {
             // Delete targeting object
-            if (Object.keys(spawnedObjects).length === 0 || streamedObjects === 0) {
+            if (createdObjects === 0 || streamedObjects === 0) {
                 return;
             }
             
-            let target = getTargetingObject(7);
-            if (target) {
-                for (let id in spawnedObjects) {
-                    if (target === spawnedObjects[id].handle) {
-                        AddTextEntry("ACCEPT", "Delete object");
-                        exports["instructional-buttons"].SetInstructionalButton("ACCEPT", 203, true);
+            // TODO: Object deletion
 
-                        if (IsControlJustPressed(0, 203)) { // Space | X
-                            emitNet("object-manager:deleteObject", id);
-                        }
-                        break;
-                    }
-                }
-            } else {
-                exports["instructional-buttons"].SetInstructionalButton("ACCEPT", 203, false);
-            }
+            // let target = getTargetingObject(7);
+            // if (target) {
+            //     for (let id in spawnedObjects) {
+            //         if (target === spawnedObjects[id].handle) {
+            //             AddTextEntry("ACCEPT", "Delete object");
+            //             exports["instructional-buttons"].SetInstructionalButton("ACCEPT", 203, true);
+
+            //             if (IsControlJustPressed(0, 203)) { // Space | X
+            //                 emitNet("object-manager:deleteObject", id);
+            //             }
+            //             break;
+            //         }
+            //     }
+            // } else {
+            //     exports["instructional-buttons"].SetInstructionalButton("ACCEPT", 203, false);
+            // }
         }
     });
 
@@ -336,11 +338,17 @@ let init = () => {
         model = args[0] ? "prop_box_wood01a" : args[0];
     }, false);
 
+    let tI;
     RegisterCommand("test_streamer", async () => {
-        setInterval(() => {
-            [coords.x, coords.y, coords.z] = GetEntityCoords(PlayerPedId());
-            emitNet("object-manager:objectCreated", model, coords, heading);
-        }, 100);
+        if (! tI) {
+            tI = setInterval(() => {
+                [coords.x, coords.y, coords.z] = GetEntityCoords(PlayerPedId());
+                emitNet("object-manager:objectCreated", model, coords, heading);
+            }, 10);
+        } else {
+            clearInterval(tI);
+        }
+        
     });
 };
 init();

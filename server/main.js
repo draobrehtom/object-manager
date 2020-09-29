@@ -33,10 +33,8 @@ let createObject = (model, x, y, z, heading = 0, rotation = undefined) => {
         rotation: rotation,
     };
 
-    for (let player in players) {
-        emitNet("object-manager:createObject", player, id, objects[id]);
-    }
-
+    emitNet("object-manager:createObject", -1, id, objects[id]);
+    
     return id;
 };
 exports("createObject", createObject);
