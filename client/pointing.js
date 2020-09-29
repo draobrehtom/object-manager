@@ -1,8 +1,4 @@
 let playerPedId = PlayerPedId();
-
-AddTextEntry("EDIT_MODE", "Enter into edit mode");
-exports["instructional-buttons"].SetInstructionalButton("EDIT_MODE", 140, true);
-
 on("playerSpawned", () => {
     playerPedId = PlayerPedId();
     exports["instructional-buttons"].SetInstructionalButton("EDIT_MODE", 140, true);
@@ -19,6 +15,7 @@ let init = () => {
     
     const MAX_SMOOTH = 10;
     const MIN_SMOOTH = 1;
+    const MAX_DISTANCE = 15;
     
     let coords = {x: 0, y: 0, z: 0};
     let object;
@@ -117,7 +114,7 @@ let init = () => {
             DisableControlAction(0, 206, true); // E | LB
 
             // Moving object
-            if (distance < 70) {
+            if (distance >= 5 && distance < MAX_DISTANCE) {
                 if (IsControlPressed(0, 187)) { // arrow down | pad down
                     distance -= 1 / movementSmooth;
                 }
@@ -150,9 +147,19 @@ let init = () => {
                 if (IsDisabledControlPressed(0, 206)) { // RB
                     height += 0.1 / movementSmooth;
                 }
+            } else {
+                distance = 5;
+            }
+
+            if (leftRight >= MAX_DISTANCE / 3 || leftRight <= -1 * MAX_DISTANCE / 3) {
+                leftRight /= 1.01;
+            }
+            if (height >= MAX_DISTANCE / 2) {
+                height /= 1.01;
+            } else if (height <= -1 * MAX_DISTANCE / 2) {
+                height = 0;
             }
     
-            
             // Movement smooth
             if (IsControlJustPressed(0, 192)) { // TAB | Y
                 movementSmooth = Math.max(movementSmooth - 1, MIN_SMOOTH);
@@ -162,12 +169,10 @@ let init = () => {
                 movementSmooth = Math.min(movementSmooth + 1, MAX_SMOOTH);
                 console.log(movementSmooth);
             }
+
+
+
     
-            // // Reset
-            // if (IsControlJustPressed(0, 194)) { //  BACKSPACE | B
-            //     distance =  5;
-            //     leftRight = 0;
-            // }
     
             // Front back
             let r = getPointerCoordinates();
@@ -267,6 +272,7 @@ let init = () => {
         height = 0;
         distance = 5;
         heading = 0;
+        leftRight = 0;
     }
     
     let enable = (m) => {
