@@ -1,4 +1,12 @@
+let locked = false;
+let Regions = [];
+let currentCell = {
+    x: undefined,
+    y: undefined,
+};
+let nearestCells = [];
 let streamCandidates = {};
+
 let getCellFromCoords = (x, y, z = 0) => {
     let cellX = Math.floor(((x - MapOffsetX) / CellWidth) + 0.5);
     let cellY = Math.floor(((y - MapOffsetY) / CellHeight) + 0.5);
@@ -43,24 +51,14 @@ let getCellRegion = (cell) => {
 // }, 500);
 
 
-let distanceCache = {
-}
+
 GetDistanceBetweenCoords = (x1, y1, z1, x2, y2, z2) => {
-    let index = `${x1},${y1},${z1}:${x2},${y2},${z2}`;
-    let index2 = `${x2},${y2},${z2}:${x1},${y1},${z1}`;
-    let distance = distanceCache[index] ? distanceCache[index] : distanceCache[index2];
-    if (! distance) {
-        distance = Math.sqrt(
+        return distance = Math.sqrt(
             Math.pow(x1 - x2, 2) +
             Math.pow(y1 - y2, 2) +
             Math.pow(z1 - z2, 2)
         );
-        distanceCache[index] = distance;
-        distanceCache[index2] = distance;
-    } else {
-        console.log("Cache");
-    }
-    return distance;
+
 }
 
 let spawnObject = (model, coords, heading = 0, rotation = undefined) => {
@@ -69,6 +67,8 @@ let spawnObject = (model, coords, heading = 0, rotation = undefined) => {
 
         let tick = setTick(() => {
             if (HasModelLoaded(model)) {
+                clearTick(tick);
+
                 let obj = CreateObject(model, coords.x, coords.y, coords.z, false, false, false);
                 SetEntityHeading(obj, heading);
                 if (rotation !== undefined && rotation !== null) {
@@ -76,9 +76,7 @@ let spawnObject = (model, coords, heading = 0, rotation = undefined) => {
                 }
                 
                 SetModelAsNoLongerNeeded(model);
-                // SetEntityAsNoLongerNeeded(model);
                 FreezeEntityPosition(obj, true);
-                clearTick(tick);
                 console.log("Creating object", obj);
                 resolve(obj);
             } else {
@@ -89,6 +87,13 @@ let spawnObject = (model, coords, heading = 0, rotation = undefined) => {
     });
 };
 
+let createObject = (id, obj) => {
+    let cell = getCellFromCoords(obj.position.x, obj.position.y, obj.position.z);
+    obj.cell = cell;
+    setCellRegion(obj.cell, id, obj);
+    createdObjects++;
+}
+
 let deleteObject = (id) => {
     let object = allObjects[id];
     if (object) {
@@ -98,123 +103,193 @@ let deleteObject = (id) => {
         }
         createdObjects--;
         setCellRegion(object.cell, id, undefined);
+        delete streamCandidates[id]
     }
 }
 
-let watchCells = () => {
+let calculateNearestCells = (cell) => {
+    let cells = [
+        {
+            x: cell.x,
+            y: cell.y
+        }
+    ];
+    for (let i = 0; i <= NEAREST_CELLS_OFFSET; i++) {
+        for (let ii = 0; ii <= NEAREST_CELLS_OFFSET; ii++) {
+            if (i === 0 && ii === 0) {
+                continue;
+            }
+            cells.push({
+                x: cell.x + i,
+                y: cell.y + ii
+            });
+            cells.push({
+                x: cell.x - i,
+                y: cell.y - ii
+            });
+            cells.push({
+                x: cell.x + i,
+                y: cell.y - ii
+            });
+            cells.push({
+                x: cell.x - i,
+                y: cell.y + ii
+            });
+        }
+    }
+
+    return cells;
+}
+
+/**
+ * Watch cells
+ */
+setTick(() => {
+    if (locked) {
+        return;
+    }
+
+    if (GetEntitySpeed(playerPedId) === 0 && nearestCells.length !== 0) {
+        return;
+    }
+    
+    // Update nearest cells
     let playerPosition = GetEntityCoords(playerPedId);
     let cell = getCellFromCoords(playerPosition[0], playerPosition[1], playerPosition[2]);
     if (cell.x !== currentCell.x || cell.y !== currentCell.y) {
-        // Update nearest cells
-        nearestCells = [
-            {
-                x: cell.x,
-                y: cell.y
-            }
-        ];
-        for (let i = 0; i < streamedDistance; i++) {
-            for (let ii = 0; ii < streamedDistance; ii++) {
-                nearestCells.push({
-                    x: cell.x + i,
-                    y: cell.y + ii
-                });
-                nearestCells.push({
-                    x: cell.x - i,
-                    y: cell.y - ii
-                });
-                nearestCells.push({
-                    x: cell.x + i,
-                    y: cell.y - ii
-                });
-                nearestCells.push({
-                    x: cell.x - i,
-                    y: cell.y + ii
-                });
-            }
-        }
-
-        // Update current cell
-        currentCell = cell;
+        nearestCells = calculateNearestCells(cell);
     }
-}
+
+    // Update current cell
+    currentCell = cell;
+});
 
 
 /**
  * Streaming objects
  */
-let streaming = false;
 setTick(async () => {
-    if (GetEntitySpeed(playerPedId) > 0) {
-        watchCells();
+    if (locked) {
+        return;
     }
 
-    if (! streaming) {
-        streaming = true;
-
-        // Delete objects from previous cells except nearest one
-        for (let id in streamCandidates) {
-            let object = streamCandidates[id];
-            let objectInNearestCell = false;
-            
-            nearestCells.forEach(nearestCell => {
-                if (object.cell.x === nearestCell.x && object.cell.y === nearestCell.y) {
-                    objectInNearestCell = true;
-                }
-            });
-
-            if (! objectInNearestCell) {
-                if (object.handle !== undefined) {
-                    DeleteObject(object.handle);
-                    object.handle = undefined;
-                    setCellRegion(object.cell, id, object);
-                    streamedObjects--;
-                }
-                delete streamCandidates[id];
-            }
-        }
-
-        // Collect objects nearest cells
-        nearestCells.forEach(async (nearestCell) => {
-            let cellRegion = getCellRegion(nearestCell);
-            for (let id in cellRegion) {
-                streamCandidates[id] = cellRegion[id];
-            }
-        });
-
-        // Stream objects
-        for (let id in streamCandidates) {
-            let object = streamCandidates[id];
+    // Collect objects from nearest cells
+    for (let cellIndex = 0; cellIndex < nearestCells.length; cellIndex++) {
+        let nearestCell = nearestCells[cellIndex];
+        let cellObjects = getCellRegion(nearestCell);
+        
+        for (let id in cellObjects) {
+            let object = cellObjects[id];
             if (object.handle === undefined) {
                 object.handle = await spawnObject(object.model, object.position, object.heading, object.rotation);
                 setCellRegion(object.cell, id, object);
-                streamCandidates[id] = object;
                 streamedObjects++;
+                streamCandidates[id] = object;
             }
         }
-
-
-        streaming = false;
     }
+});
+
+/**
+ * Delete streamed objects that are far away
+ */
+setTick(() => {
+    if (locked) {
+        return;
+    }
+
+    for (let id in streamCandidates) {
+        let object = streamCandidates[id];
+
+        if (object.handle === undefined) {
+            continue;
+        }
+
+        let objectInNearestCell = false;
+        nearestCells.forEach(nearestCell => {
+            if (object.cell.x === nearestCell.x && object.cell.y === nearestCell.y) {
+                objectInNearestCell = true;
+            }
+        });
+
+        if (! objectInNearestCell) {
+            DeleteObject(object.handle);
+            object.handle = undefined;
+            setCellRegion(object.cell, id, object);
+            streamedObjects--;
+            delete streamCandidates[id];
+        }
+    }
+});
+
+setTick(() => {
+    locked = true;
+
+    if (streamedObjects > MAX_STREAMED_OBJECTS) {
+        // Delete cell regions
+        Regions = [];
+
+        // Resize cells
+        MapCellsWidth *= 1.5;
+        MapCellsHeight *= 1.5;
+        CellWidth = MapWidth / MapCellsWidth;
+        CellHeight = MapHeight / MapCellsHeight;
+
+        // Update nearest cells
+        let playerPosition = GetEntityCoords(playerPedId);
+        currentCell = getCellFromCoords(playerPosition[0], playerPosition[1], playerPosition[2]);
+        nearestCells = calculateNearestCells(currentCell);
+
+        // Update cell for each object
+        for (let id in allObjects) {
+            let object = allObjects[id];
+            object.cell = getCellFromCoords(object.position.x, object.position.y, object.position.z);
+            if (streamCandidates[id]) {
+                streamCandidates[id] = object;
+            }
+            setCellRegion(object.cell, id, object);
+        }
+    } else if (createdObjects > streamedObjects && streamedObjects < MAX_STREAMED_OBJECTS) {
+        // Delete cell regions
+        Regions = [];
+
+        // Resize cells
+        MapCellsWidth *= 0.5;
+        MapCellsHeight *= 0.5;
+        CellWidth = MapWidth / MapCellsWidth;
+        CellHeight = MapHeight / MapCellsHeight;
+
+        // Update nearest cells
+        let playerPosition = GetEntityCoords(playerPedId);
+        currentCell = getCellFromCoords(playerPosition[0], playerPosition[1], playerPosition[2]);
+        nearestCells = calculateNearestCells(currentCell);
+
+        // Update cell for each object
+        for (let id in allObjects) {
+            let object = allObjects[id];
+            object.cell = getCellFromCoords(object.position.x, object.position.y, object.position.z);
+            if (streamCandidates[id]) {
+                streamCandidates[id] = object;
+            }
+            setCellRegion(object.cell, id, object);
+        }
+    }
+
+    locked = false;
 });
 
 /**
  * Events handling
  */
-onNet("object-manager:createObjects", (id, objects) => {
+onNet("object-manager:createObjects", (objects) => {
     for (let id in objects) {
         let obj = objects[id];
-        let cell = getCellFromCoords(obj.position.x, obj.position.y, obj.position.z);
-        obj.cell = cell;
-        setCellRegion(obj.cell, id, obj);
-        createdObjects++;
+        createObject(id, obj);
     }
 });
 
 onNet("object-manager:createObject", (id, obj) => {
-    let cell = getCellFromCoords(obj.position.x, obj.position.y, obj.position.z);
-    obj.cell = cell;
-    setCellRegion(cell, id, obj);
-    createdObjects++;
+    createObject(id, obj);
 });
 
 onNet("object-manager:deleteObject", (id) => {
@@ -222,9 +297,10 @@ onNet("object-manager:deleteObject", (id) => {
 });
 
 on("onResourceStop", (resource) => {
-    console.log(resource, GetCurrentResourceName());
     if (resource === GetCurrentResourceName()) {
-        // TODO: delete objects
+        for (let id in allObjects) {
+            deleteObject(id);
+        }
     }
 });
 
@@ -240,7 +316,12 @@ if (debug) {
         SetTextDropShadow()
         SetTextOutline()
         SetTextEntry("STRING")
-        AddTextComponentString("Created: "+ createdObjects + " \nStreamed: " + streamedObjects);
+        AddTextComponentString(
+            "Created: "+ createdObjects + 
+            " \nStreamed: " + streamedObjects +
+            " \nCurrent Cell: " + currentCell.x + ", " + currentCell.y + 
+            " \nCell size: " + CellWidth + ", " + CellHeight
+        ); 
         DrawText(0.16, 0.70)
     });
 }

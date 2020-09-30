@@ -106,15 +106,16 @@ let init = () => {
             toggle();
         }
 
+        DisableControlAction(0, 24, true); // Disable attack  Left mouse | RT
+        DisableControlAction(0, 25, true); // Disable aim Right mouse | LT
+        DisableControlAction(0, 205, true); // Q | LB
+        DisableControlAction(0, 206, true); // E | LB
+        
         if (editModeEnabled) {
-            DisableControlAction(0, 24, true); // Disable attack  Left mouse | RT
-            DisableControlAction(0, 25, true); // Disable aim Right mouse | LT
 
-            DisableControlAction(0, 205, true); // Q | LB
-            DisableControlAction(0, 206, true); // E | LB
 
             // Moving object
-            if (distance >= 5 && distance < MAX_DISTANCE) {
+            if (distance >= 0 && distance < MAX_DISTANCE) {
                 if (IsControlPressed(0, 187)) { // arrow down | pad down
                     distance -= 1 / movementSmooth;
                 }
@@ -148,7 +149,7 @@ let init = () => {
                     height += 0.1 / movementSmooth;
                 }
             } else {
-                distance = 5;
+                distance = 0;
             }
 
             if (leftRight >= MAX_DISTANCE / 3 || leftRight <= -1 * MAX_DISTANCE / 3) {
@@ -156,8 +157,8 @@ let init = () => {
             }
             if (height >= MAX_DISTANCE / 2) {
                 height /= 1.01;
-            } else if (height <= -1 * MAX_DISTANCE / 2) {
-                height = 0;
+            } else if (height <= MAX_DISTANCE / -15) {
+                height = 0.5;
             }
     
             // Movement smooth

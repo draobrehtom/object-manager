@@ -7,7 +7,7 @@ let generateObjectId = () => {
 
 let createObjects = (player, objects) => {
     emitNet("object-manager:createObjects", player, objects);
-    console.log("create", objects, player)
+    console.log("Request sent for " + Object.keys(objects).length + " objects creating for player with ID " + player);
 };
 
 onNet("object-manager:playerConnected", () => {
