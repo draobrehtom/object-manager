@@ -336,7 +336,7 @@ let init = () => {
     });
     
     RegisterCommand("pointing", (source, args) => {
-        model = args[0] ? "prop_box_wood01a" : args[0];
+        model = args.length >= 1 ? args[0] : "prop_box_wood01a";
     }, false);
 
     let tI;

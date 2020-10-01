@@ -62,12 +62,11 @@ let spawnObject = (model, coords, heading = 0, rotation = undefined) => {
             if (HasModelLoaded(model)) {
                 clearTick(tick);
 
-                let obj = CreateObject(model, coords.x, coords.y, coords.z, false, false, false);
+                let obj = CreateObjectNoOffset(model, coords.x, coords.y, coords.z, false, false, false);
                 SetEntityHeading(obj, heading);
                 if (rotation !== undefined && rotation !== null) {
                     SetEntityRotation(obj, rotation.x, rotation.y, rotation.z);
                 }
-                
                 SetModelAsNoLongerNeeded(model);
                 FreezeEntityPosition(obj, true);
                 console.log("Creating object", obj);
