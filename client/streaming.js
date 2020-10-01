@@ -102,15 +102,41 @@ let deleteObject = (id) => {
 
 let getNearestCells = (cell) => {
     let cells = [];
-    for (let i = 0; i <= NEAREST_CELLS_OFFSET; i++) {
-        for (let ii = 0; ii <= NEAREST_CELLS_OFFSET; ii++) {
+    for (let x = 0; x <= NEAREST_CELLS_OFFSET; x++) {
+        for (let y = 0; y <= NEAREST_CELLS_OFFSET; y++) {
             cells.push({
-                x: cell.x + i,
-                y: cell.y + ii
+                x: cell.x + x,
+                y: cell.y + y
+            });
+        }
+    }
+    
+    for (let x = 0; x <= NEAREST_CELLS_OFFSET; x++) {
+        for (let y = -1; y >= -NEAREST_CELLS_OFFSET; y--) {
+            cells.push({
+                x: cell.x + x,
+                y: cell.y + y
+            });
+        }
+    }
+    for (let x = -1; x >= -NEAREST_CELLS_OFFSET; x--) {
+        for (let y = -1; y >= -NEAREST_CELLS_OFFSET; y--) {
+            cells.push({
+                x: cell.x + x,
+                y: cell.y + y
             });
         }
     }
 
+    for (let x = -1; x >= -NEAREST_CELLS_OFFSET; x--) {
+        for (let y = 0; y <= NEAREST_CELLS_OFFSET; y++) {
+            cells.push({
+                x: cell.x + x,
+                y: cell.y + y
+            });
+        }
+    }
+    
     return cells;
 }
 
@@ -154,10 +180,12 @@ setTick(async () => {
         for (let id in cellObjects) {
             let object = cellObjects[id];
             if (object.handle === undefined) {
-                object.handle = await spawnObject(object.model, object.position, object.heading, object.rotation);
-                setCellRegion(object.cell, id, object);
-                streamedObjects++;
-                streamCandidates[id] = object;
+                if (streamedObjects < MAX_STREAMED_OBJECTS) {
+                    object.handle = await spawnObject(object.model, object.position, object.heading, object.rotation);
+                    setCellRegion(object.cell, id, object);
+                    streamedObjects++;
+                    streamCandidates[id] = object;
+                }
             }
         }
     }
@@ -232,23 +260,17 @@ setTick(() => {
         nearObjectsCount += n;
     });
     
-    if (streamedObjects > MAX_STREAMED_OBJECTS) {
+    if (nearObjectsCount > MAX_STREAMED_OBJECTS) {
         locked = true;
         if (nearObjectsCount !== 0) {
-            resizeCells(1.01);
+            resizeCells(1.1);
         }
-    }
-
-    if (nearObjectsCount < Math.min(MAX_STREAMED_OBJECTS, createdObjects) && CellWidth < MAX_CELL_SIZE) {
+    } else if (nearObjectsCount < Math.min(MAX_STREAMED_OBJECTS, createdObjects) && CellWidth < MAX_CELL_SIZE) {
         locked = true;
-        resizeCells(0.99);
+        resizeCells(0.5);
     } else {
         locked = false;
     }
-
-
-
-
 });
 
 /**
@@ -292,11 +314,11 @@ if (debug) {
         AddTextComponentString(
             "Created: "+ createdObjects + 
             " \nStreamed: " + streamedObjects +
-            // " \nCurrent Cell: " + currentCell.x + ", " + currentCell.y + 
-            " \nCell size: " + CellWidth.toFixed() + ", " + CellHeight.toFixed() +
-            " \nLocked: " + locked +
-            " \nNear objects: " + nearObjectsCount +
-            " \nAll objects: " + Object.keys(allObjects).length
+            " \nCell: " + currentCell.x + ", " + currentCell.y + 
+            " \nSize: " + CellWidth.toFixed() + ", " + CellHeight.toFixed() +
+            " \nL: " + locked +
+            " \nNear: " + nearObjectsCount +
+            " \nAll: " + Object.keys(allObjects).length
         ); 
         DrawText(0.16, 0.70)
     });
