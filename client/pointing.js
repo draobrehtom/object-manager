@@ -15,7 +15,7 @@ let init = () => {
     
     const MAX_SMOOTH = 10;
     const MIN_SMOOTH = 1;
-    const MAX_DISTANCE = 15;
+    const MAX_DISTANCE = 30;
     
     let coords = {x: 0, y: 0, z: 0};
     let object;
@@ -31,9 +31,10 @@ let init = () => {
             let tick = setTick(() => {
                 if (HasModelLoaded(model)) {
                     obj = CreateObject(model, coords[0], coords[1], coords[2], false, false, false);
+                    SetEntityAlpha(obj, 200, false);
+                    SetEntityCollision(obj, false, false);
                     SetModelAsNoLongerNeeded(model);
                     FreezeEntityPosition(obj, true);
-                    SetEntityCollision(obj, false, false);
                     resolve(obj);
                     clearTick(tick);
                 } else {
@@ -99,7 +100,7 @@ let init = () => {
     
     
     
-    
+    let lastTarget;
     setTick(() => {
         DisableControlAction(0, 140, true); //Atack
         if (IsDisabledControlJustPressed(0, 140)) { // Atack | B
@@ -108,6 +109,7 @@ let init = () => {
 
         DisableControlAction(0, 24, true); // Disable attack  Left mouse | RT
         DisableControlAction(0, 25, true); // Disable aim Right mouse | LT
+        DisableControlAction(0, 44, true); // Disable cover
         DisableControlAction(0, 205, true); // Q | LB
         DisableControlAction(0, 206, true); // E | LB
         
@@ -210,10 +212,6 @@ let init = () => {
                 [coords.x, coords.y, coords.z] = GetEntityCoords(object);
             }
             
-
-
-            // DrawMarker(2, coords.x, coords.y, coords.z, 0.0, 0.0, 0.0, 0.0, 180.0, 0.0, 2.0, 2.0, 2.0, 255, 128, 0, 50, false, true, 2, null, null, false);
-    
             // Placing object
             if (IsControlJustPressed(0, 203)) { // SPACE | X
                 let rotation = GetEntityRotation(object);
@@ -230,24 +228,26 @@ let init = () => {
                 return;
             }
             
-            // TODO: Object deletion
-
-            // let target = getTargetingObject(7);
-            // if (target) {
-            //     for (let id in spawnedObjects) {
-            //         if (target === spawnedObjects[id].handle) {
-            //             AddTextEntry("ACCEPT", "Delete object");
-            //             exports["instructional-buttons"].SetInstructionalButton("ACCEPT", 203, true);
-
-            //             if (IsControlJustPressed(0, 203)) { // Space | X
-            //                 emitNet("object-manager:deleteObject", id);
-            //             }
-            //             break;
-            //         }
-            //     }
-            // } else {
-            //     exports["instructional-buttons"].SetInstructionalButton("ACCEPT", 203, false);
-            // }
+            let target = getTargetingObject(7);
+            if (target) {
+                for (let id in streamCandidates) {
+                    if (target === streamCandidates[id].handle) {
+                        SetEntityAlpha(target, 100, false);
+                        AddTextEntry("ACCEPT", "Delete object");
+                        exports["instructional-buttons"].SetInstructionalButton("ACCEPT", 203, true);
+                        if (IsControlJustPressed(0, 203)) { // Space | X
+                            emitNet("object-manager:deleteObject", id);
+                        }
+                        break;
+                    }
+                }
+            } else {
+                exports["instructional-buttons"].SetInstructionalButton("ACCEPT", 203, false);
+            }
+            if (target !== lastTarget) {
+                ResetEntityAlpha(lastTarget);
+            }
+            lastTarget = target;
         }
     });
 
@@ -272,7 +272,7 @@ let init = () => {
         }
         object = undefined;
         editModeEnabled = false;
-        height = 0;
+        // height = 0;
         distance = 5;
         heading = 0;
         leftRight = 0;
@@ -280,8 +280,8 @@ let init = () => {
     
     let enable = (m) => {
         AddTextEntry("EDIT_MODE", "Exit from edit mode");
-        AddTextEntry("SMOOTH+", "Speed -");
-        AddTextEntry("SMOOTH-", "Speed +");
+        // AddTextEntry("SMOOTH+", "Speed -");
+        AddTextEntry("SMOOTH-", "Sensetivity");
         AddTextEntry("PLACE_OBJECT", "Place object");
         // AddTextEntry("DOWN", "Backward");
         // AddTextEntry("UP", "Frontward");
@@ -289,11 +289,11 @@ let init = () => {
         // AddTextEntry("RIGHT", "Right");
         AddTextEntry("RIGHT", " Moving object");
        
-        AddTextEntry("ROTATE_LEFT", "Rotate Left");
-        AddTextEntry("ROTATE_RIGHT", "Rotate Right");
+        AddTextEntry("ROTATE_LEFT", "Rotate");
+        // AddTextEntry("ROTATE_RIGHT", "Rotate Right");
 
-        AddTextEntry("HEIGHT+", "Height Down");
-        AddTextEntry("HEIGHT-", "Height Up");
+        // AddTextEntry("HEIGHT+", "Height Down");
+        AddTextEntry("HEIGHT-", "Height");
         
         exports["instructional-buttons"].SetInstructionalButton("PLACE_OBJECT", 203, true);
 
