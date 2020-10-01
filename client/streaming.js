@@ -45,13 +45,6 @@ let getCellRegion = (cell) => {
     return Regions[cell.x][cell.y];
 }
 
-// setInterval(() => {
-//     [x, y, z] = GetEntityCoords(playerPedId);
-//     console.log(getCellFromCoords(x, y, z), allObjects[Object.keys(allObjects)[0]].cell);
-// }, 500);
-
-
-
 GetDistanceBetweenCoords = (x1, y1, z1, x2, y2, z2) => {
         return distance = Math.sqrt(
             Math.pow(x1 - x2, 2) +
@@ -107,32 +100,12 @@ let deleteObject = (id) => {
     }
 }
 
-let calculateNearestCells = (cell) => {
-    let cells = [
-        {
-            x: cell.x,
-            y: cell.y
-        }
-    ];
+let getNearestCells = (cell) => {
+    let cells = [];
     for (let i = 0; i <= NEAREST_CELLS_OFFSET; i++) {
         for (let ii = 0; ii <= NEAREST_CELLS_OFFSET; ii++) {
-            if (i === 0 && ii === 0) {
-                continue;
-            }
             cells.push({
                 x: cell.x + i,
-                y: cell.y + ii
-            });
-            cells.push({
-                x: cell.x - i,
-                y: cell.y - ii
-            });
-            cells.push({
-                x: cell.x + i,
-                y: cell.y - ii
-            });
-            cells.push({
-                x: cell.x - i,
                 y: cell.y + ii
             });
         }
@@ -142,22 +115,22 @@ let calculateNearestCells = (cell) => {
 }
 
 /**
- * Watch cells
+ * Watching cells
  */
 setTick(() => {
     if (locked) {
         return;
     }
 
-    if (GetEntitySpeed(playerPedId) === 0 && nearestCells.length !== 0) {
-        return;
-    }
+    // if (GetEntitySpeed(playerPedId) === 0 && nearestCells.length !== 0) {
+    //     return;
+    // }
     
     // Update nearest cells
     let playerPosition = GetEntityCoords(playerPedId);
     let cell = getCellFromCoords(playerPosition[0], playerPosition[1], playerPosition[2]);
     if (cell.x !== currentCell.x || cell.y !== currentCell.y) {
-        nearestCells = calculateNearestCells(cell);
+        nearestCells = getNearestCells(cell);
     }
 
     // Update current cell
@@ -191,7 +164,7 @@ setTick(async () => {
 });
 
 /**
- * Delete streamed objects that are far away
+ * Deletion of streamed objects that are not in near cells
  */
 setTick(() => {
     if (locked) {
@@ -222,60 +195,60 @@ setTick(() => {
     }
 });
 
-setTick(() => {
-    locked = true;
 
-    if (streamedObjects > MAX_STREAMED_OBJECTS) {
-        // Delete cell regions
-        Regions = [];
+let resizeCells = (ratio) => {
+    Regions = [];
+    // Resize cells
+    MapCellsWidth *= ratio;
+    MapCellsHeight *= ratio;
+    CellWidth = MapWidth / MapCellsWidth;
+    CellHeight = MapHeight / MapCellsHeight;
 
-        // Resize cells
-        MapCellsWidth *= 1.5;
-        MapCellsHeight *= 1.5;
-        CellWidth = MapWidth / MapCellsWidth;
-        CellHeight = MapHeight / MapCellsHeight;
+    // Update nearest cells
+    let playerPosition = GetEntityCoords(playerPedId);
+    currentCell = getCellFromCoords(playerPosition[0], playerPosition[1], playerPosition[2]);
+    nearestCells = getNearestCells(currentCell);
 
-        // Update nearest cells
-        let playerPosition = GetEntityCoords(playerPedId);
-        currentCell = getCellFromCoords(playerPosition[0], playerPosition[1], playerPosition[2]);
-        nearestCells = calculateNearestCells(currentCell);
-
-        // Update cell for each object
-        for (let id in allObjects) {
-            let object = allObjects[id];
-            object.cell = getCellFromCoords(object.position.x, object.position.y, object.position.z);
-            if (streamCandidates[id]) {
-                streamCandidates[id] = object;
-            }
-            setCellRegion(object.cell, id, object);
+    // Update cell for each object
+    for (let id in allObjects) {
+        let object = allObjects[id];
+        object.cell = getCellFromCoords(object.position.x, object.position.y, object.position.z);
+        if (streamCandidates[id]) {
+            streamCandidates[id] = object;
         }
-    } else if (createdObjects > streamedObjects && streamedObjects < MAX_STREAMED_OBJECTS) {
-        // Delete cell regions
-        Regions = [];
+        setCellRegion(object.cell, id, object);
+    }
+}
 
-        // Resize cells
-        MapCellsWidth *= 0.5;
-        MapCellsHeight *= 0.5;
-        CellWidth = MapWidth / MapCellsWidth;
-        CellHeight = MapHeight / MapCellsHeight;
-
-        // Update nearest cells
-        let playerPosition = GetEntityCoords(playerPedId);
-        currentCell = getCellFromCoords(playerPosition[0], playerPosition[1], playerPosition[2]);
-        nearestCells = calculateNearestCells(currentCell);
-
-        // Update cell for each object
-        for (let id in allObjects) {
-            let object = allObjects[id];
-            object.cell = getCellFromCoords(object.position.x, object.position.y, object.position.z);
-            if (streamCandidates[id]) {
-                streamCandidates[id] = object;
-            }
-            setCellRegion(object.cell, id, object);
+/**
+ * Resizing cells
+ */
+let nearObjectsCount = 0;
+setTick(() => {
+    nearObjectsCount = 0
+    nearestCells.forEach(nearestCell => {
+        let objects = getCellRegion(nearestCell);
+        let n = Object.keys(objects).length;
+        nearObjectsCount += n;
+    });
+    
+    if (streamedObjects > MAX_STREAMED_OBJECTS) {
+        locked = true;
+        if (nearObjectsCount !== 0) {
+            resizeCells(1.01);
         }
     }
 
-    locked = false;
+    if (nearObjectsCount < Math.min(MAX_STREAMED_OBJECTS, createdObjects) && CellWidth < MAX_CELL_SIZE) {
+        locked = true;
+        resizeCells(0.99);
+    } else {
+        locked = false;
+    }
+
+
+
+
 });
 
 /**
@@ -319,8 +292,11 @@ if (debug) {
         AddTextComponentString(
             "Created: "+ createdObjects + 
             " \nStreamed: " + streamedObjects +
-            " \nCurrent Cell: " + currentCell.x + ", " + currentCell.y + 
-            " \nCell size: " + CellWidth + ", " + CellHeight
+            // " \nCurrent Cell: " + currentCell.x + ", " + currentCell.y + 
+            " \nCell size: " + CellWidth.toFixed() + ", " + CellHeight.toFixed() +
+            " \nLocked: " + locked +
+            " \nNear objects: " + nearObjectsCount +
+            " \nAll objects: " + Object.keys(allObjects).length
         ); 
         DrawText(0.16, 0.70)
     });
