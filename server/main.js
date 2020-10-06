@@ -7,7 +7,7 @@ let generateObjectId = () => {
 
 let createObjects = (player, objects) => {
     emitNet("object-manager:createObjects", player, objects);
-    console.log("create", objects, player)
+    console.log("Request sent for " + Object.keys(objects).length + " objects creating for player with ID " + player);
 };
 
 onNet("object-manager:playerConnected", () => {
@@ -20,7 +20,7 @@ on("playerDropped", (reason) => {
 });
 
 
-let createObject = (model, x, y, z) => {
+let createObject = (model, x, y, z, heading = 0, rotation = undefined) => {
     let id = generateObjectId();
     objects[id] = {
         model,
@@ -28,13 +28,13 @@ let createObject = (model, x, y, z) => {
             x,
             y,
             z
-        }
+        },
+        heading: heading,
+        rotation: rotation,
     };
 
-    for (let player in players) {
-        emitNet("object-manager:createObject", player, id, objects[id]);
-    }
-
+    emitNet("object-manager:createObject", -1, id, objects[id]);
+    
     return id;
 };
 exports("createObject", createObject);
@@ -49,4 +49,12 @@ exports("deleteObject", deleteObject);
 
 exports("getObjects", () => {
     return objects;
+});
+
+onNet("object-manager:objectCreated", (model, coords, heading = 0, rotation = undefined) => {
+    createObject(model, coords.x, coords.y, coords.z, heading, rotation);
+});
+
+onNet("object-manager:deleteObject", (id) => {
+    deleteObject(id);
 });
